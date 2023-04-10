@@ -272,6 +272,14 @@ namespace Songify_Slim.Views
 
             Settings.Player = cbx_Source.SelectedIndex;
 
+            if (cbx_Source.SelectedIndex == 5)
+            {
+                Window_Youtube wY = new Window_Youtube();
+                wY.Show();
+                _timerFetcher.Dispose();
+                return;
+            }
+
             // Dpending on which source is chosen, it starts the timer that fetches the song info
             SetFetchTimer();
 
@@ -592,6 +600,7 @@ namespace Songify_Slim.Views
             _selectedSource = cbx_Source.SelectedValue.ToString();
             cbx_Source.SelectionChanged += Cbx_Source_SelectionChanged;
 
+
             // text in the bottom right
             LblCopyright.Content = $"Songify v{GlobalObjects.AppVersion}{(GlobalObjects.IsBeta ? " Beta" : "")} Copyright ©";
 
@@ -618,7 +627,16 @@ namespace Songify_Slim.Views
 
 
             // automatically start fetching songs
-            SetFetchTimer();
+            if (cbx_Source.SelectedIndex == 5)
+            {
+                Window_Youtube wY = new Window_Youtube();
+                wY.Show();
+                _timerFetcher.Dispose();
+            }
+            else
+            {
+                SetFetchTimer();
+            }
             if (!string.IsNullOrWhiteSpace(Settings.TwitchAccessToken))
                 await TwitchHandler.InitializeApi(TwitchHandler.TwitchAccount.Main);
             if (!string.IsNullOrWhiteSpace(Settings.TwitchBotToken))

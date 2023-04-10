@@ -28,6 +28,7 @@ namespace Songify_Slim.Util.General
         public static WebServer WebServer = new WebServer();
         public static bool TwitchUserTokenExpired = false;
         public static bool TwitchBotTokenExpired = false;
+        public static List<string> YoutubePlaylist = new List<string>();
 
         public static T FindChild<T>(DependencyObject parent, string childName)
             where T : DependencyObject

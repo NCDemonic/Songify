@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Timers;
@@ -39,6 +40,7 @@ using TwitchLib.PubSub;
 using TwitchLib.PubSub.Events;
 using Unosquare.Swan;
 using Unosquare.Swan.Formatters;
+using static System.Net.WebRequestMethods;
 using Application = System.Windows.Application;
 using Timer = System.Timers.Timer;
 
@@ -1342,6 +1344,39 @@ namespace Songify_Slim.Util.Songify
                 UpdateQueueWindow();
                 SendChatMessage(e.ChatMessage.Channel,
                     $"@{e.ChatMessage.DisplayName} your previous request ({tmp}) will be skipped");
+            }
+            else if (e.ChatMessage.Message.StartsWith("!yt "))
+            {
+                //https://www.youtube.com/watch?v=3yP_D-Y1uCE&feature=emb_rel_pause
+                //https://www.youtube-nocookie.com/embed/S8Ak5h_0OxE
+                string ytEmbedBase = "https://www.youtube-nocookie.com/embed/";
+                string ytUrl = e.ChatMessage.Message.Split(' ')[1];
+                Match match = Regex.Match(ytUrl, @"(?:[?&]v=)([^&]+)");
+
+                if (match.Success)
+                {
+                    // Extract video ID from regex match
+                    string videoId = match.Groups[1].Value;
+                    Debug.WriteLine("Video ID: " + videoId);
+
+                    GlobalObjects.YoutubePlaylist.Add($"{videoId}");
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Window qw = null;
+                        foreach (Window window in Application.Current.Windows)
+                        {
+                            if (window.GetType() == typeof(Window_Youtube))
+                                qw = window;
+                        }
+
+                        (qw as Window_Youtube)?.LbPlaylist.Items.Refresh();
+                    });
+                }
+                else
+                {
+                    Debug.WriteLine("Video ID not found.");
+                }
             }
             else if (e.ChatMessage.Message == $"!{Settings.Settings.BotCmdSonglikeTrigger}" &&
                      (e.ChatMessage.IsBroadcaster || e.ChatMessage.IsModerator) && Settings.Settings.BotCmdSonglike)
