@@ -46,7 +46,7 @@ namespace Songify_Slim.Views
         private WindowConsole _consoleWindow;
         public NotifyIcon NotifyIcon = new NotifyIcon();
         public string SongArtist, SongTitle;
-        public string CurrSong, CurrSongTwitch;
+        public string CurrSong = "", CurrSongTwitch = "";
         private readonly ContextMenu _contextMenu = new ContextMenu();
         private bool _firstRun = true;
         private bool _forceClose;
@@ -75,9 +75,10 @@ namespace Songify_Slim.Views
                 dynamic telemetryPayload = new
                 {
                     uuid = Settings.Uuid,
+                    key = Settings.AccessKey,
                     tst = DateTime.Now.ToUnixEpochDate(),
-                    twitch_id = Settings.TwitchUser.Id == null ? "" : Settings.TwitchUser.Id,
-                    twitch_name = Settings.TwitchUser.DisplayName == null ? "" : Settings.TwitchUser.DisplayName,
+                    twitch_id = Settings.TwitchUser == null ? "" : Settings.TwitchUser.Id,
+                    twitch_name = Settings.TwitchUser == null ? "" : Settings.TwitchUser.DisplayName,
                     vs = GlobalObjects.AppVersion,
                     playertype = GlobalObjects.GetReadablePlayer(),
                 };
@@ -644,8 +645,6 @@ namespace Songify_Slim.Views
             await SendTelemetry();
             await TwitchHandler.CheckStreamIsUp();
 
-            ApiHandler.DoAuthAsync();
-
             if (!Settings.UpdateRequired) return;
             List<int> userLevels = new List<int>();
             for (int i = 0; i <= Settings.TwSrUserLevel; i++)
@@ -1129,14 +1128,7 @@ namespace Songify_Slim.Views
             if (!File.Exists(_songPath))
             {
                 File.Create(_songPath).Close();
-                try
-                {
-                    WriteOutput(_songPath, CurrSong);
-                }
-                catch (Exception)
-                {
-                    Logger.LogStr($"File {_songPath} couldn't be accessed.");
-                }
+
             }
 
             //if (new FileInfo(_songPath).Length == 0) File.WriteAllText(_songPath, CurrSong);
@@ -1327,6 +1319,12 @@ namespace Songify_Slim.Views
             mi_TwitchCheckOnlineStatus.Header = $"{Properties.Resources.mw_menu_Twitch_CheckOnlineStatus} ({(live ? "Live" : "Offline")})";
             LblStatus.Content = live ? "Stream is Up!" : "Stream is offline.";
             Logger.LogStr($"TWITCH: Stream is {(live ? "Live" : "Offline")}");
+        }
+
+        private void BtnWebServerUrl_Click(object sender, RoutedEventArgs e)
+        {
+            if (GlobalObjects.WebServer.Run)
+                Process.Start($"http://localhost:{Settings.WebServerPort}");
         }
     }
 }

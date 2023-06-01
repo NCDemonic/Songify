@@ -6,11 +6,12 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
+using Newtonsoft.Json.Linq;
 using Unosquare.Swan.Formatters;
 using Application = System.Windows.Application;
 
@@ -75,7 +76,27 @@ namespace Songify_Slim.Util.Songify
                     case RequestMethod.Post:
                         result = await ApiClient.Post("queue", payload);
                         if (string.IsNullOrEmpty(result))
+                        {
+                            JObject x = JObject.Parse(payload);
+                            GlobalObjects.ReqList.Add(new RequestObject
+                            {
+                                Queueid = GlobalObjects.ReqList.Count + 1,
+                                Uuid = Settings.Settings.Uuid,
+                                Trackid = (string)x["queueItem"]["Trackid"],
+                                Artist = (string)x["queueItem"]["Artist"],
+                                Title = (string)x["queueItem"]["Title"],
+                                Length = (string)x["queueItem"]["Length"],
+                                Requester = (string)x["queueItem"]["Requester"],
+                                Played = 0,
+                                Albumcover = (string)x["queueItem"]["Albumcover"]
+                            });
+                            //Update indexes of the queue
+                            for (int i = 0; i < GlobalObjects.ReqList.Count; i++)
+                            {
+                                GlobalObjects.ReqList[i].Queueid = i + 1;
+                            }
                             return;
+                        }
                         try
                         {
                             RequestObject response = Json.Deserialize<RequestObject>(result);
@@ -112,60 +133,13 @@ namespace Songify_Slim.Util.Songify
                 await ApiClient.Post("telemetry", payload);
         }
 
-        public static void UpdateWebQueue(string trackId, string artist, string title, string length, string requester,
-            string played, string o)
+        public static async void SongRequest(RequestMethod method, string payload)
         {
-            Debug.WriteLine("Called Webrequest");
-            string operation = "";
-
-            // This switch tells the php to either add or delete one entry or clear the entire queue
-            switch (o)
+            if (method == RequestMethod.Post)
             {
-                case "i":
-                    operation = "Add";
-                    break;
-                case "u":
-                    operation = "Delete";
-                    break;
-                case "c":
-                    operation = "Clear";
-                    break;
+                var response = await ApiClient.Post("song", payload);
+                Debug.WriteLine(response);
             }
-
-            // Here a URL is being created to call the website and insert the values to the db
-
-            string extras = Settings.Settings.Uuid +
-                            "&trackid=" + WebUtility.UrlEncode(trackId) +
-                            "&artist=" + WebUtility.UrlEncode(artist.Replace("\"", "\\\"")) +
-                            "&title=" + WebUtility.UrlEncode(title.Replace("\"", "\\\"")) +
-                            "&length=" + WebUtility.UrlEncode(length) +
-                            "&requester=" + WebUtility.UrlEncode(requester) +
-                            "&played=" + WebUtility.UrlEncode(played) +
-                            "&o=" + WebUtility.UrlEncode(o) +
-                            "&key=" + WebUtility.UrlEncode(Settings.Settings.AccessKey);
-
-            string url = $"{GlobalObjects.BaseUrl}/add_queue.php/?id=" + extras;
-            WebUtility.UrlEncode(url);
-
-            dynamic test = new
-            {
-                uuid = Settings.Settings.Uuid,
-                key = Settings.Settings.AccessKey,
-                queueItem =
-                    new RequestObject
-                    {
-                        Trackid = trackId,
-                        Artist = artist,
-                        Title = title,
-                        Length = length,
-                        Requester = requester,
-                        Albumcover = null
-                    }
-
-            };
-            Debug.WriteLine((string)Json.Serialize(test));
-
-            DoWebRequest(url, RequestType.Queue, operation);
         }
 
         private static void DoWebRequest(string url, RequestType requestType, string operation = "")
@@ -190,7 +164,8 @@ namespace Songify_Slim.Util.Songify
                         {
                             break; // Exit the for loop
                         }
-                        else if (myHttpWebResponse.StatusCode == HttpStatusCode.BadRequest)
+
+                        if (myHttpWebResponse.StatusCode == HttpStatusCode.BadRequest)
                         {
                             if (currentTry >= maxTries)
                             {
@@ -205,7 +180,7 @@ namespace Songify_Slim.Util.Songify
                         }
                         else if (myHttpWebResponse.StatusCode == HttpStatusCode.Forbidden)
                         {
-                            Logger.LogStr("WEB: PLEASE CONTACT US ON THE DISCORD -> https://discord.com/invite/H8nd4T4");
+                            Logger.LogStr("API: PLEASE CONTACT US ON THE DISCORD -> https://discord.com/invite/H8nd4T4");
                             break; // Exit the for loop
                         }
                     }
@@ -214,7 +189,7 @@ namespace Songify_Slim.Util.Songify
                 {
                     if (ex.Response is HttpWebResponse response && response.StatusCode == HttpStatusCode.Forbidden)
                     {
-                        Logger.LogStr("WEB: PLEASE CONTACT US ON THE DISCORD -> https://discord.com/invite/H8nd4T4");
+                        Logger.LogStr("API: PLEASE CONTACT US ON THE DISCORD -> https://discord.com/invite/H8nd4T4");
                         break; // Exit the for loop
                     }
                     else if (currentTry >= maxTries)
@@ -238,47 +213,45 @@ namespace Songify_Slim.Util.Songify
 
         private static void LogWebResponseStatus(RequestType requestType, string operation, string statusDescription)
         {
-            string message = $"WEB: {requestType}{(string.IsNullOrWhiteSpace(operation) ? ":" : " " + operation + ":")} Status: {statusDescription}";
+            string message = $"API: {requestType}{(string.IsNullOrWhiteSpace(operation) ? ":" : " " + operation + ":")} Status: {statusDescription}";
             Logger.LogStr(message);
         }
 
         private static void LogRetryAttempt(RequestType requestType, string operation, int currentTry, int maxTries)
         {
-            Logger.LogStr($"WEB: {requestType}{(!string.IsNullOrWhiteSpace(operation) ? " " + operation : "")}: Try {currentTry} of {maxTries}");
-        }
-
-        public static void SendTelemetry()
-        {
-
-            string extras = $"?id={Settings.Settings.Uuid}" +
-                            $"&tst={WebUtility.UrlEncode(((int)DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1)).TotalSeconds).ToString())}" +
-                            $"&v={WebUtility.UrlEncode(Assembly.GetExecutingAssembly().GetName().Version.ToString())}" +
-                            $"&key={WebUtility.UrlEncode(Settings.Settings.AccessKey)}" +
-                            $"&tid={WebUtility.UrlEncode(Settings.Settings.TwitchUser == null ? "" : Settings.Settings.TwitchUser.Id)}" +
-                            $"&tn={WebUtility.UrlEncode(Settings.Settings.TwitchUser == null ? "" : Settings.Settings.TwitchUser.DisplayName)}";
-            string url = $"{GlobalObjects.BaseUrl}/songifydata.php/" + extras;
-            WebUtility.UrlEncode(url);
-            DoWebRequest(url, RequestType.Telemetry);
+            Logger.LogStr($"API: {requestType}{(!string.IsNullOrWhiteSpace(operation) ? " " + operation : "")}: Try {currentTry} of {maxTries}");
         }
 
         public static void UploadSong(string currSong, string coverUrl = null)
         {
-            // extras are UUID and Songinfo
-            string extras = Settings.Settings.Uuid +
-                            "&song=" + HttpUtility.UrlEncode(currSong.Trim().Replace("\"", ""), Encoding.UTF8) +
-                            "&cover=" + HttpUtility.UrlEncode(coverUrl, Encoding.UTF8) +
-                            "&key=" + WebUtility.UrlEncode(Settings.Settings.AccessKey);
-            string url = $"{GlobalObjects.BaseUrl}/song.php?id=" + extras;
-            DoWebRequest(url, RequestType.UploadSong);
+
+            dynamic paylod = new
+            {
+                uuid = Settings.Settings.Uuid,
+                key = Settings.Settings.AccessKey,
+                song = currSong,
+                cover = coverUrl
+            };
+            SongRequest(RequestMethod.Post, Json.Serialize(paylod));
+
+            //// extras are UUID and Songinfo
+            //string extras = Settings.Settings.Uuid +
+            //                "&song=" + HttpUtility.UrlEncode(currSong.Trim().Replace("\"", ""), Encoding.UTF8) +
+            //                "&cover=" + HttpUtility.UrlEncode(coverUrl, Encoding.UTF8) +
+            //                "&key=" + WebUtility.UrlEncode(Settings.Settings.AccessKey);
+            //string url = $"{GlobalObjects.BaseUrl}/song.php?id=" + extras;
+            //DoWebRequest(url, RequestType.UploadSong);
         }
 
         public static void UploadHistory(string currSong, int unixTimestamp)
         {
+            string song = GlobalObjects.CurrentSong == null ? currSong : $"{GlobalObjects.CurrentSong.Artists} - {GlobalObjects.CurrentSong.Title}";
+
             string extras = Settings.Settings.Uuid +
                             "&tst=" + unixTimestamp +
-                            "&song=" + HttpUtility.UrlEncode(currSong, Encoding.UTF8) +
+                            "&song=" + HttpUtility.UrlEncode(song, Encoding.UTF8) +
                             "&key=" + WebUtility.UrlEncode(Settings.Settings.AccessKey);
-            string url = $"{GlobalObjects.BaseUrl}/song_history.php/?id=" + extras;
+            string url = $"{GlobalObjects.ApiUrl}/history.php/?id=" + extras;
             // Create a new 'HttpWebRequest' object to the mentioned URL.
             DoWebRequest(url, RequestType.UploadHistory);
         }

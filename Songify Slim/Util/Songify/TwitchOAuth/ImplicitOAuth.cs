@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
+using Songify_Slim.Util.General;
 
 namespace Songify_Slim.Util.Songify.TwitchOAuth
 {
@@ -17,7 +18,7 @@ namespace Songify_Slim.Util.Songify.TwitchOAuth
         // Listener for twitch redirect.
         private readonly HttpListener _redirectListener = new HttpListener();
         // Listener for fetching info from the redirect listener.
-        private readonly HttpListener _fetchListeneer = new HttpListener();
+        private readonly HttpListener _fetchListener = new HttpListener();
 
         // Events
         public delegate void UpdatedValuesEvent(string state, string token);
@@ -64,17 +65,24 @@ namespace Songify_Slim.Util.Songify.TwitchOAuth
             // Open the browser and send the user to the implicit autentication page on Twitch.
             try
             {
-                var process = new Process();
-                process.StartInfo = new ProcessStartInfo
+                if (File.Exists(@"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"))
                 {
-                    FileName = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge1.exe",
-                    Arguments = $"--inprivate {TwitchAuthUrl}?{queryParams}"
-                };
-                process.Start();
+                    var process = new Process();
+                    process.StartInfo = new ProcessStartInfo
+                    {
+                        FileName = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                        Arguments = $"--inprivate {TwitchAuthUrl}?{queryParams}"
+                    };
+                    process.Start();
+                }
+                else
+                {
+                    Process.Start($"{TwitchAuthUrl}?{queryParams}");
+                }
             }
             catch (Exception e)
             {
-                Process.Start($"{TwitchAuthUrl}?{queryParams}");
+                Logger.LogExc(e);
             }
 
             return authStateVerify;
@@ -93,19 +101,25 @@ namespace Songify_Slim.Util.Songify.TwitchOAuth
                 return;
             }
 
-
-            if (!_redirectListener.IsListening)
+            try
             {
-                _redirectListener.Prefixes.Add(ApplicationDetails.RedirectUri);
-                _redirectListener.Start();
-                _redirectListener.BeginGetContext(IncommingTwitchRequest, _redirectListener);
+                if (!_redirectListener.IsListening)
+                {
+                    _redirectListener.Prefixes.Add(ApplicationDetails.RedirectUri);
+                    _redirectListener.Start();
+                    _redirectListener.BeginGetContext(IncommingTwitchRequest, _redirectListener);
+                }
+
+                if (!_fetchListener.IsListening)
+                {
+                    _fetchListener.Prefixes.Add(ApplicationDetails.FetchUri);
+                    _fetchListener.Start();
+                    _fetchListener.BeginGetContext(IncommingLocalRequest, _fetchListener);
+                }
             }
-
-            if (!_fetchListeneer.IsListening)
+            catch (Exception e)
             {
-                _fetchListeneer.Prefixes.Add(ApplicationDetails.FetchUri);
-                _fetchListeneer.Start();
-                _fetchListeneer.BeginGetContext(IncommingLocalRequest, _fetchListeneer);
+                Logger.LogExc(e);
             }
         }
 
