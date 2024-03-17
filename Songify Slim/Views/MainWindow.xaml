@@ -11,7 +11,7 @@
                       xmlns:controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                       xmlns:iconPacks="http://metro.mahapps.com/winfx/xaml/iconpacks"
                       xmlns:songifySlim="clr-namespace:Songify_Slim"
-                      Title="Songify" Height="285" Width="588" Loaded="MetroWindowLoaded"
+                      Title="Songify (BeetwinTV build)" Height="285" Width="588" Loaded="MetroWindowLoaded"
                       StateChanged="MetroWindowStateChanged" ResizeMode="CanMinimize" Closed="MetroWindowClosed"
                       ShowDialogsOverTitleBar="False"
                       Closing="MetroWindow_Closing"
@@ -123,7 +123,7 @@
                 <MenuItem x:Name="mi_Queue" Header="{x:Static local:Resources.mw_menu_Queue_Window}"
                           Click="Mi_Queue_Click" Tag="Window" />
                 <MenuItem Header="{x:Static local:Resources.mw_menu_Queue_Browser}" Click="Mi_Queue_Click"
-                              Tag="Browser" />
+                              Tag="Browser" Visibility="Hidden" />
                 <MenuItem x:Name="mi_QueueClear" Header="{x:Static local:Resources.mw_menu_Queue_Clear}"
                               Click="Mi_QueueClear_Click" />
                 <MenuItem x:Name="mi_Blacklist" Header="{x:Static local:Resources.mw_menu_Blacklist}"
@@ -133,7 +133,7 @@
                 <MenuItem Header="{x:Static local:Resources.mw_menu_History_Window}" Tag="Window"
                           Click="BtnHistory_Click" />
                 <MenuItem Header="{x:Static local:Resources.mw_menu_History_Browser}" Tag="Browser"
-                          Click="BtnHistory_Click" />
+                          Click="BtnHistory_Click" Visibility="Hidden"/>
             </MenuItem>
             <MenuItem Header="{x:Static local:Resources.mw_menu_View}">
                 <MenuItem Header="{x:Static local:Resources.mw_menu_Console}" Click="BtnMenuViewConsole_Click"></MenuItem>
@@ -169,8 +169,6 @@
         <Button Grid.Row="2" Grid.Column="1"  Cursor="Hand" BorderThickness="0" Click="BtnPaypal_Click" Background="Transparent" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,0" Style="{DynamicResource MahApps.Styles.Button.Dialogs}">
             <Button.Content>
                 <StackPanel Orientation="Horizontal">
-                    <iconPacks:PackIconForkAwesome Kind="Buymeacoffee" Margin="0,0,5,0"/>
-                    <TextBlock Text="{x:Static local:Resources.mw_menu_BuyUsACoffee}" VerticalAlignment="Center"/>
                     <StackPanel.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform/>
